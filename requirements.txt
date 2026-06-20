@@ -11,3 +11,5 @@ Pillow>=10.0.0
 python-dotenv>=1.0.0
 python-pptx>=0.6.0
 fpdf2>=2.7.0
+protobuf>=3.20.3,<5.0
+opentelemetry-api>=1.0.0,<2.0
