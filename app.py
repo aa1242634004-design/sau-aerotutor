@@ -144,7 +144,7 @@ def _folder_options() -> list:
 # ════════════════════════════════════════════
 @st.cache_resource
 def init_core():
-    """缓存不依赖 LLM 的基础资源（ChromaDB、Embeddings、复习智库）"""
+    """缓存不依赖 LLM 的基础资源（向量库、Embeddings、复习智库）"""
     kb_manager = KnowledgeBaseManager()
     rag_engine = RAGEngine(kb_manager)
     vault = ReviewVault()

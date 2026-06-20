@@ -1,6 +1,6 @@
 """
-模块 B：RAG 检索引擎
-- 根据 active_kb_ids 多 collection 联合查询
+模块 B：RAG 检索引擎 (FAISS 版)
+- 根据 active_kb_ids 多索引联合查询
 - 返回结果带来源标注（优化①：答案溯源）
 """
 from modules.kb_manager import KnowledgeBaseManager
@@ -19,7 +19,7 @@ class RAGEngine:
         top_k_per_kb: int = 5,
     ) -> tuple[list[dict], list[dict]]:
         """
-        多 collection 联合检索
+        多知识空间联合检索
         返回：(检索结果列表, 来源信息列表)
         """
         emb = self.kb.get_embedding_function()
@@ -30,30 +30,29 @@ class RAGEngine:
 
         for kb_id in active_kb_ids:
             try:
-                col = self.kb.get_collection(kb_id)
-                if col.count() == 0:
-                    continue
-
-                results = col.query(
-                    query_embeddings=[query_vector],
-                    n_results=min(top_k_per_kb, col.count()),
-                    include=["documents", "metadatas", "distances"],
+                index = self.kb.get_collection(kb_id)
+                # FAISS similarity_search_with_score_by_vector
+                results = index.similarity_search_with_score_by_vector(
+                    query_vector, k=min(top_k_per_kb, 20)
                 )
 
                 kb_info = self.kb.get_kb_info(kb_id)
                 kb_name = kb_info["name"] if kb_info else kb_id
 
-                for i in range(len(results["documents"][0])):
-                    meta = results["metadatas"][0][i]
-                    score = 1 - results["distances"][0][i]
+                for doc, score in results:
+                    if doc.page_content == "__init__":
+                        continue  # 跳过分隔占位文档
+                    meta = doc.metadata
                     file_name = meta.get("file_name", "未知")
+                    # FAISS 返回的是 L2 距离，越小越相似；转为 0-1 分数
+                    normalized_score = round(1.0 / (1.0 + score), 3)
 
                     all_docs.append({
-                        "content": results["documents"][0][i],
+                        "content": doc.page_content,
                         "kb_name": kb_name,
                         "kb_id": kb_id,
                         "file_name": file_name,
-                        "score": round(score, 3),
+                        "score": normalized_score,
                     })
 
                     # 收集来源
@@ -64,9 +63,9 @@ class RAGEngine:
                             "kb_id": kb_id,
                         })
             except Exception as e:
-                # collection 可能已被删除
                 continue
 
+        # 按得分降序排列
         all_docs.sort(key=lambda d: d["score"], reverse=True)
         return all_docs[:12], sources[:8]
 

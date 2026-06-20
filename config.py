@@ -38,8 +38,8 @@ EMBEDDING_CONFIG = {
     "base_url": _get_secret("EMBEDDING_BASE_URL", ""),
 }
 
-CHROMA_CONFIG = {
-    "persist_directory": os.path.join(os.path.dirname(__file__), "chroma_db"),
+VECTOR_CONFIG = {
+    "persist_directory": os.path.join(os.path.dirname(__file__), "vector_db"),
 }
 
 AGENT_NAME = "沈航智学 AeroTutor"
