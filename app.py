@@ -396,7 +396,12 @@ with st.sidebar:
     st.divider()
 
     # ── 拖拽文件夹树 ──
-    st.html(build_dnd_html(_convs(), _folders(), st.session_state.active_conv_id, t))
+    convs = _convs()
+    folders = _folders()
+    # DEBUG: 显示对话数量，确认数据存在
+    convs_with_msgs = sum(1 for c in convs.values() if c.get("messages"))
+    st.caption(f"📋 {len(convs)} 个对话（{convs_with_msgs} 个有消息）| 📁 {len(folders)} 个文件夹")
+    st.html(build_dnd_html(convs, folders, st.session_state.active_conv_id, t))
 
     st.divider()
 
