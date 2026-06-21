@@ -378,9 +378,6 @@ with st.sidebar:
                 if now_ts - last_ts > 2.0:  # 2 秒内不重复创建
                     _create_folder(name, pid)
                     st.session_state[last_key] = now_ts
-                    # 清空输入防止 rerun 时再次触发
-                    if "new_folder_name" in st.session_state:
-                        st.session_state.new_folder_name = ""
                     st.rerun()
             else:
                 st.warning("请输入文件夹名称")
