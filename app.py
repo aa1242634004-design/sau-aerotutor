@@ -395,13 +395,46 @@ with st.sidebar:
 
     st.divider()
 
-    # ── 拖拽文件夹树 ──
+    # ── 对话列表 ──
     convs = _convs()
     folders = _folders()
-    # DEBUG: 显示对话数量，确认数据存在
-    convs_with_msgs = sum(1 for c in convs.values() if c.get("messages"))
-    st.caption(f"📋 {len(convs)} 个对话（{convs_with_msgs} 个有消息）| 📁 {len(folders)} 个文件夹")
-    st.html(build_dnd_html(convs, folders, st.session_state.active_conv_id, t))
+
+    # 按创建时间倒序排列
+    sorted_convs = sorted(
+        convs.items(),
+        key=lambda x: x[1].get("created_at", ""),
+        reverse=True,
+    )
+
+    # 构建选项：文件夹名 + 对话标题 + 消息数
+    conv_options = []
+    conv_ids = []
+    for cid, cdata in sorted_convs:
+        title = cdata.get("title", "新对话")[:20]
+        msg_count = len(cdata.get("messages", []))
+        fid = cdata.get("folder_id", "")
+        folder_name = folders.get(fid, {}).get("name", "") if fid else ""
+        label = f"{title} ({msg_count}条)"
+        if folder_name:
+            label = f"📁{folder_name} › {label}"
+        active_marker = "🔹 " if cid == st.session_state.active_conv_id else ""
+        conv_options.append(f"{active_marker}{label}")
+        conv_ids.append(cid)
+
+    if conv_ids:
+        current_index = conv_ids.index(st.session_state.active_conv_id) if st.session_state.active_conv_id in conv_ids else 0
+        selected = st.selectbox(
+            "对话历史",
+            range(len(conv_options)),
+            format_func=lambda i: conv_options[i],
+            index=current_index,
+            key="conv_switcher",
+            label_visibility="collapsed",
+        )
+        # 检测切换
+        if conv_ids[selected] != st.session_state.active_conv_id:
+            _switch_conversation(conv_ids[selected])
+            st.rerun()
 
     st.divider()
 
