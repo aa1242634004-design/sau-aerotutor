@@ -120,9 +120,9 @@ function render() {{
                   + 'ondrop="handleDrop(event, \''+f.id+'\');this.classList.remove(\'drag-over\');">';
             html += '<div class="sb-folder-header" onclick="var b=this.nextElementSibling;b.classList.toggle(\'open\');">'
                   + '📁 '+f.data.name+' ('+convsInFolder.length+')'
-                  + '<span style="margin-left:auto;display:flex;align-items:center;gap:6px;">'
-                  + '<span class="sb-del-folder" onclick="event.stopPropagation();if(confirm(\'删除文件夹「'+f.data.name+'\」？对话将移到未分类。\'))saveAction({{type:\'delete_folder\',folder_id:\''+f.id+'\'}});toast(\'已删除\');" title="删除文件夹" style="cursor:pointer;opacity:0.5;font-size:0.7rem;">🗑</span>'
-                  + '<span style="font-size:0.65rem;">▾</span></span></div>';
+                  + '<span style="margin-left:auto;display:flex;align-items:center;gap:10px;">'
+                  + '<span class="sb-del-folder" onclick="event.stopPropagation();if(confirm(\'删除文件夹「'+f.data.name+'\」？对话将移到未分类。\'))saveAction({{type:\'delete_folder\',folder_id:\''+f.id+'\'}});toast(\'已删除\');" title="删除文件夹" style="cursor:pointer;opacity:0.7;font-size:0.85rem;color:#e74c3c;">🗑</span>'
+                  + '<span style="font-size:0.7rem;opacity:0.6;">▾</span></span></div>';
             html += '<div class="sb-folder-body">';
             for (var j=0; j<convsInFolder.length; j++) {{
                 var c = convsInFolder[j];

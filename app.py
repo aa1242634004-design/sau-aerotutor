@@ -330,9 +330,9 @@ def _switch_conversation(conv_id: str, folder_id: str = ""):
 st.session_state.messages = _active_messages()
 
 # 处理拖拽动作
-if st.session_state.dnd_action:
+if dnd_action:
     try:
-        action = _json.loads(st.session_state.dnd_action)
+        action = _json.loads(dnd_action)
         atype = action.get("type", "")
         if atype == "move_conv":
             _move_conversation(action["conv_id"], action.get("folder_id", ""))
@@ -346,7 +346,6 @@ if st.session_state.dnd_action:
             _delete_folder(action.get("folder_id", ""))
     except Exception:
         pass
-    st.session_state.dnd_action = ""
     st.session_state.dnd_action_input = ""
     st.rerun()
 
