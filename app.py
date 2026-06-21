@@ -114,6 +114,32 @@ def _move_conversation(conv_id: str, folder_id: str):
         _save_conversations(st.session_state.conversations)
 
 
+def _delete_conversation(conv_id: str):
+    """删除对话"""
+    if conv_id in _convs():
+        _convs().pop(conv_id, None)
+        _save_conversations(st.session_state.conversations)
+    # 如果删的是当前活跃对话，切换到另一个
+    if st.session_state.active_conv_id == conv_id:
+        remaining = [cid for cid in _convs().keys()]
+        if remaining:
+            # 找最新有消息的
+            best = max(remaining, key=lambda cid: (
+                len(_convs()[cid].get("messages", [])),
+                _convs()[cid].get("created_at", ""),
+            ))
+            _switch_conversation(best)
+        else:
+            import uuid as _uuid
+            new_id = _uuid.uuid4().hex[:12]
+            _convs()[new_id] = {
+                "title": "新对话", "messages": [], "folder_id": "",
+                "created_at": time.strftime("%Y-%m-%d %H:%M"),
+            }
+            st.session_state.active_conv_id = new_id
+            _save_conversations(st.session_state.conversations)
+
+
 def _get_folder_tree() -> list:
     """返回缩进排序的文件夹列表 [(fid, name, depth, parent_id), ...]"""
     folders = _folders()
@@ -362,25 +388,37 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     # ── 新建文件夹 ──
-    with st.expander("📁 新建文件夹", expanded=False):
-        new_fname = st.text_input("名称", key="new_folder_name", placeholder="文件夹名", label_visibility="collapsed")
+    with st.expander("📁 文件夹管理", expanded=False):
+        new_fname = st.text_input("名称", key="new_folder_name", placeholder="新文件夹名", label_visibility="collapsed")
         parent_opts = [("", "根目录")] + [(fid, fd["name"]) for fid, fd in sorted(_folders().items(), key=lambda x: x[1].get("name", ""))]
         parent_sel = st.selectbox("父文件夹", parent_opts, format_func=lambda x: x[1], key="new_folder_parent", label_visibility="collapsed")
-        create_clicked = st.button("➕ 创建文件夹", use_container_width=True, key="create_folder_btn")
-        if create_clicked:
-            name = (new_fname or "").strip()
-            pid = parent_sel[0] if parent_sel and parent_sel[0] else ""
-            if name:
-                # 防重复：检查是否刚刚创建过同名同父文件夹
-                last_key = f"_last_create_{name}_{pid}"
-                now_ts = time.time()
-                last_ts = st.session_state.get(last_key, 0)
-                if now_ts - last_ts > 2.0:  # 2 秒内不重复创建
-                    _create_folder(name, pid)
-                    st.session_state[last_key] = now_ts
-                    st.rerun()
-            else:
-                st.warning("请输入文件夹名称")
+        c1, c2 = st.columns([1, 1])
+        with c1:
+            if st.button("➕ 创建", use_container_width=True, key="create_folder_btn"):
+                name = (new_fname or "").strip()
+                pid = parent_sel[0] if parent_sel and parent_sel[0] else ""
+                if name:
+                    last_key = f"_last_create_{name}_{pid}"
+                    now_ts = time.time()
+                    if now_ts - st.session_state.get(last_key, 0) > 2.0:
+                        _create_folder(name, pid)
+                        st.session_state[last_key] = now_ts
+                        st.rerun()
+                else:
+                    st.warning("请输入文件夹名称")
+
+        # 已有文件夹列表（可删除）
+        if _folders():
+            st.caption("已有文件夹：")
+            for fid, fdata in sorted(_folders().items(), key=lambda x: x[1].get("name", "")):
+                fcol1, fcol2 = st.columns([5, 1])
+                with fcol1:
+                    conv_count = sum(1 for c in _convs().values() if c.get("folder_id") == fid)
+                    st.caption(f"📁 {fdata['name']} ({conv_count}个对话)")
+                with fcol2:
+                    if st.button("🗑", key=f"delfolder_{fid}", help=f"删除文件夹「{fdata['name']}」"):
+                        _delete_folder(fid)
+                        st.rerun()
 
     # ── 新建对话 ──
     new_conv_folder = st.selectbox(
@@ -399,42 +437,38 @@ with st.sidebar:
     convs = _convs()
     folders = _folders()
 
-    # 按创建时间倒序排列
     sorted_convs = sorted(
         convs.items(),
         key=lambda x: x[1].get("created_at", ""),
         reverse=True,
     )
 
-    # 构建选项：文件夹名 + 对话标题 + 消息数
-    conv_options = []
-    conv_ids = []
-    for cid, cdata in sorted_convs:
-        title = cdata.get("title", "新对话")[:20]
-        msg_count = len(cdata.get("messages", []))
-        fid = cdata.get("folder_id", "")
-        folder_name = folders.get(fid, {}).get("name", "") if fid else ""
-        label = f"{title} ({msg_count}条)"
-        if folder_name:
-            label = f"📁{folder_name} › {label}"
-        active_marker = "🔹 " if cid == st.session_state.active_conv_id else ""
-        conv_options.append(f"{active_marker}{label}")
-        conv_ids.append(cid)
+    if sorted_convs:
+        st.caption(f"💬 {len(sorted_convs)} 个对话")
+        for cid, cdata in sorted_convs:
+            title = cdata.get("title", "新对话")[:18]
+            msg_count = len(cdata.get("messages", []))
+            fid = cdata.get("folder_id", "")
+            folder_name = folders.get(fid, {}).get("name", "") if fid else ""
+            is_active = cid == st.session_state.active_conv_id
 
-    if conv_ids:
-        current_index = conv_ids.index(st.session_state.active_conv_id) if st.session_state.active_conv_id in conv_ids else 0
-        selected = st.selectbox(
-            "对话历史",
-            range(len(conv_options)),
-            format_func=lambda i: conv_options[i],
-            index=current_index,
-            key="conv_switcher",
-            label_visibility="collapsed",
-        )
-        # 检测切换
-        if conv_ids[selected] != st.session_state.active_conv_id:
-            _switch_conversation(conv_ids[selected])
-            st.rerun()
+            c1, c2 = st.columns([5, 1])
+            with c1:
+                prefix = "🔹 " if is_active else "💬 "
+                label = f"{prefix}{title} ({msg_count}条)"
+                if folder_name:
+                    label += f" · 📁{folder_name}"
+                if st.button(label, key=f"convbtn_{cid}", use_container_width=True,
+                            type="primary" if is_active else "secondary",
+                            help=f"切换到「{title}」"):
+                    _switch_conversation(cid)
+                    st.rerun()
+            with c2:
+                if st.button("🗑", key=f"delconv_{cid}", help=f"删除「{title}」"):
+                    _delete_conversation(cid)
+                    st.rerun()
+    else:
+        st.caption("暂无对话")
 
     st.divider()
 
