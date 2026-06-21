@@ -110,7 +110,7 @@ function render() {{
             var indent = '  '.repeat(depth);
             var convsInFolder = [];
             for (var cid in CONVS) {{
-                if ((CONVS[cid].folder_id||'') === f.id && (CONVS[cid].messages||[]).length > 0)
+                if ((CONVS[cid].folder_id||'') === f.id)
                     convsInFolder.push({{id: cid, data: CONVS[cid]}});
             }}
             convsInFolder.sort(function(a,b) {{ return (b.data.created_at||'').localeCompare(a.data.created_at||''); }});
@@ -147,7 +147,7 @@ function render() {{
     // 未分类
     var uncategorized = [];
     for (var cid in CONVS) {{
-        if ((CONVS[cid].folder_id||'') === '' && (CONVS[cid].messages||[]).length > 0)
+        if ((CONVS[cid].folder_id||'') === '')
             uncategorized.push({{id: cid, data: CONVS[cid]}});
     }}
     uncategorized.sort(function(a,b) {{ return (b.data.created_at||'').localeCompare(a.data.created_at||''); }});
